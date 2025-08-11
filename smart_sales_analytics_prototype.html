@@ -1,0 +1,281 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart Sales Analytics Prototype</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f4f6f8;
+  }
+  h1, h2 {
+    color: #333;
+  }
+  .container {
+    max-width: 900px;
+    margin: auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+  }
+  input, select, button {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    box-sizing: border-box;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+  }
+  button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-top: 15px;
+  }
+  button:hover {
+    background-color: #45a049;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+  }
+  th {
+    background-color: #4CAF50;
+    color: white;
+  }
+  .flex-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .flex-col {
+    flex: 1;
+  }
+  @media(max-width: 600px) {
+    .flex-row {
+      flex-direction: column;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Smart Sales Analytics Prototype</h1>
+    
+    <!-- Sales Entry Form -->
+    <section>
+      <h2>Enter Sales Transaction</h2>
+      <form id="salesForm">
+        <label for="productName">Product Name:</label>
+        <input type="text" id="productName" required placeholder="e.g. Bread" />
+
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" min="1" required value="1" />
+
+        <label for="saleDate">Sale Date:</label>
+        <input type="date" id="saleDate" required />
+
+        <button type="submit">Add Transaction</button>
+      </form>
+    </section>
+
+    <!-- Sales Transactions List -->
+    <section>
+      <h2>Sales Transactions</h2>
+      <table id="transactionsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Transactions will be added here dynamically -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Top Selling Products Report -->
+    <section>
+      <h2>Top-Selling Products</h2>
+      <table id="topProductsTable">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Total Quantity Sold</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Top products will be displayed here -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Market Basket Analysis Report -->
+    <section>
+      <h2>Product Bundling Suggestions</h2>
+      <table id="bundlingTable">
+        <thead>
+          <tr>
+            <th>Product Pair</th>
+            <th>Number of Times Bought Together</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Bundles will be displayed here -->
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+<script>
+// Sales transactions data stored as an array of objects
+let transactions = [];
+
+// Helper: Format date as yyyy-mm-dd for display consistency
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return "";
+  return d.toISOString().split('T')[0];
+}
+
+// Function to render the transactions table
+function renderTransactions() {
+  const tbody = document.querySelector("#transactionsTable tbody");
+  tbody.innerHTML = "";
+  transactions.forEach((t, index) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${t.product}</td>
+      <td>${t.quantity}</td>
+      <td>${formatDate(t.date)}</td>
+      <td><button onclick="deleteTransaction(${index})">Delete</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Function to delete a transaction
+function deleteTransaction(index) {
+  transactions.splice(index, 1);
+  updateReports();
+  renderTransactions();
+}
+
+// Function to calculate and render top-selling products
+function renderTopProducts() {
+  // Count total quantities per product
+  const productCounts = {};
+  transactions.forEach(t => {
+    productCounts[t.product] = (productCounts[t.product] || 0) + t.quantity;
+  });
+
+  // Convert to array and sort descending
+  const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]);
+
+  const tbody = document.querySelector("#topProductsTable tbody");
+  tbody.innerHTML = "";
+  sortedProducts.forEach(([product, qty]) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${product}</td><td>${qty}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Function to run basic Market Basket Analysis on transactions
+// Since we only have single products per transaction entry, we'll group by date and assume all products sold on the same date are bought together
+function renderBundlingSuggestions() {
+  // Group transactions by date
+  const groupedByDate = {};
+  transactions.forEach(t => {
+    if (!groupedByDate[t.date]) groupedByDate[t.date] = [];
+    groupedByDate[t.date].push(t.product);
+  });
+
+  // Count pairs bought together
+  const pairCounts = {};
+  for (const date in groupedByDate) {
+    const products = [...new Set(groupedByDate[date])]; // unique products that day
+    // For each unique pair in products
+    for (let i = 0; i < products.length; i++) {
+      for (let j = i + 1; j < products.length; j++) {
+        // Create sorted pair key for consistent counting
+        const pair = [products[i], products[j]].sort().join(" & ");
+        pairCounts[pair] = (pairCounts[pair] || 0) + 1;
+      }
+    }
+  }
+
+  // Convert pairCounts to array and sort descending
+  const sortedPairs = Object.entries(pairCounts).sort((a, b) => b[1] - a[1]);
+
+  const tbody = document.querySelector("#bundlingTable tbody");
+  tbody.innerHTML = "";
+  sortedPairs.forEach(([pair, count]) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${pair}</td><td>${count}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  if (sortedPairs.length === 0) {
+    tbody.innerHTML = "<tr><td colspan='2'>No bundling data available yet.</td></tr>";
+  }
+}
+
+// Update all reports
+function updateReports() {
+  renderTopProducts();
+  renderBundlingSuggestions();
+}
+
+// Handle form submission to add a new transaction
+document.getElementById("salesForm").addEventListener("submit", e => {
+  e.preventDefault();
+
+  const product = document.getElementById("productName").value.trim();
+  const quantity = parseInt(document.getElementById("quantity").value);
+  const date = document.getElementById("saleDate").value;
+
+  if (!product || !quantity || !date) {
+    alert("Please fill in all fields.");
+    return;
+  }
+
+  // Add transaction
+  transactions.push({ product, quantity, date });
+
+  // Clear form
+  e.target.reset();
+
+  // Re-render transaction list and reports
+  renderTransactions();
+  updateReports();
+});
+
+// Initialize today's date as default in date input
+document.getElementById("saleDate").value = new Date().toISOString().split('T')[0];
+
+</script>
+</body>
+</html>
